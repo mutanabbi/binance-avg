@@ -2,8 +2,9 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <thread>
 #include <iostream>
+#include <thread>
+#include <memory>
 #include <cassert>
 #include <csignal>
 
@@ -60,16 +61,17 @@ int main(int /*argc*/, const char */*argv*/[])
         asio::ip::tcp::resolver resolver{ioc};
         auto const results = resolver.resolve(HOST, PORT);
 
-        std::vector<Consumer> consumers;
+        std::vector<std::shared_ptr<Consumer>> consumers;
         consumers.reserve(results.size());
         for (const auto& rslt: results)
         {
             std::cout << rslt.endpoint() << std::endl;
-            consumers.emplace_back(ioc, "btcusdt");
-            consumers.back().connect(rslt);
+            consumers.emplace_back(std::make_shared<Consumer>(ioc, "btcusdt"));
+            consumers.back()->connect(rslt);
+            break; /// @todo ILYA get rid of this
         }
         for (auto& c: consumers)
-            c.run();
+            c->run();
 
         pull.join();
     }

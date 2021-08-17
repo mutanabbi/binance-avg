@@ -6,6 +6,7 @@
 #include <boost/beast/websocket/stream.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/streambuf.hpp>
 #include <string>
 
 /// @todo Ilya implement
@@ -27,6 +28,6 @@ private:
     const std::string path;
     boost::asio::ssl::context ctx;
     boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>> wss;
-    boost::beast::flat_buffer buffer;
+    boost::asio::streambuf buffer;
     Book book;
 };

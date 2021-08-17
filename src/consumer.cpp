@@ -1,6 +1,10 @@
 #include "consumer.hpp"
+#include "model/depth_update.hpp"
 #include <boost/asio/strand.hpp>
 #include <boost/asio/connect.hpp>
+/// @todo ILYA move to separate class
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 /// @todo ILYA get rid of this
 #include <thread>
 #include <iostream>
@@ -46,9 +50,32 @@ void Consumer::async_read()
         if (bytes)
         {
             std::cout << std::chrono::steady_clock::now().time_since_epoch().count() << std::endl;
-            std::cout << boost::beast::make_printable(buffer.data()) << "\n" << std::endl;
-            /// @todo ILYA Wtf?
-            buffer.consume(bytes);
+            //std::cout << boost::beast::make_printable(buffer.data()) << "\n" << std::endl;
+
+            /// @todo Ilya move to separate class
+            try
+            {
+                for (std::istream is{&buffer}; is && buffer.in_avail();)
+                {
+                    std::cout << "Available: " << buffer.in_avail() << std::endl;
+                    boost::property_tree::ptree json;
+                    const auto before = buffer.in_avail();
+                    boost::property_tree::read_json(is, json);
+                    const auto after = buffer.in_avail();
+                    assert(after < before);
+                    // This is valid (not partial) json. Mark a chunk as processed
+                    buffer.consume(before - after);
+
+                    depth_update update{json};
+                    std::cout << update << std::endl;
+                }
+            }
+            catch (const boost::property_tree::json_parser::json_parser_error& e)
+            {
+                std::cerr << "Unexpected error (partial json?): " << e.what() << std::endl;
+                // Skip the rest of buffer and try on next iteration
+                /// @todo Paramtrize max skip attempts
+            }
         }
         async_read();
     });
