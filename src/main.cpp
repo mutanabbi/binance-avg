@@ -1,17 +1,40 @@
-#include <boost/beast.hpp>
-#include <boost/beast/ssl.hpp>
-#include <boost/asio.hpp>
+#include "consumer.hpp"
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/connect.hpp>
-#include <boost/asio/ssl.hpp>
+#include <boost/asio/signal_set.hpp>
+#include <thread>
 #include <iostream>
 #include <cassert>
+#include <csignal>
+
+template <typename F>
+class thread_pull
+{
+public:
+    explicit thread_pull(F f, std::size_t count = std::thread::hardware_concurrency())
+    {
+        pull.reserve(count);
+        std::generate_n(std::back_inserter(pull), count, std::move(f));
+    }
+    void join() noexcept
+    {
+        for (auto& t : pull) t.join();
+        pull.clear();
+    }
+    ~thread_pull() noexcept
+    {
+        join();
+    }
+
+private:
+    std::vector<std::thread> pull;
+};
 
 int main(int /*argc*/, const char */*argv*/[])
 {
     namespace asio = boost::asio;
-    namespace beast = boost::beast;
-    namespace websocket = beast::websocket;
+    //namespace beast = boost::beast;
+    //namespace websocket = beast::websocket;
 
     static auto HOST = std::string_view{"stream.binance.com"};
     static auto PORT = std::string_view{"9443"};
@@ -19,53 +42,41 @@ int main(int /*argc*/, const char */*argv*/[])
     try
     {
         asio::io_context ioc;
+
+        boost::asio::signal_set signals{ioc};
+        signals.add(SIGINT);
+        signals.add(SIGTERM);
+        signals.add(SIGQUIT);
+        signals.async_wait([&ioc](boost::system::error_code ec, int signal) {
+            std::cout << "Sygnal detected: " << signal << std::endl;
+            std::cout << ec << ": " << ec.message() << std::endl;
+            ioc.stop();
+        });
+
+        thread_pull pull{[&ioc] {
+            return std::thread([&ioc] { ioc.run(); });
+        }};
+
         asio::ip::tcp::resolver resolver{ioc};
         auto const results = resolver.resolve(HOST, PORT);
-        std::cout << "ILYA resolved:" << std::endl;
-        for (const auto& i: results)
-            std::cout << i.endpoint() << std::endl;
 
-        beast::tcp_stream sock{ioc};
-        asio::ssl::context ctx{asio::ssl::context::tlsv12};
-        websocket::stream<beast::ssl_stream<beast::tcp_stream>> wss{asio::make_strand(ioc), ctx};
-        std::cout << "Ilya wss created" << std::endl;
+        std::vector<Consumer> consumers;
+        consumers.reserve(results.size());
+        for (const auto& rslt: results)
+        {
+            std::cout << rslt.endpoint() << std::endl;
+            consumers.emplace_back(ioc, "btcusdt");
+            consumers.back().connect(rslt);
+        }
+        for (auto& c: consumers)
+            c.run();
 
-        assert(!results.empty());
-        static_assert(
-            std::is_same<
-                beast::lowest_layer_type<decltype(wss)>
-              , beast::tcp_stream
-            >::value
-        );
-        static_assert(
-            std::is_same<
-                std::decay<decltype(get_lowest_layer(wss))>::type
-              , beast::tcp_stream
-            >::value
-        );
-        get_lowest_layer(wss).connect(results.begin(), results.end());
-        std::cout << "Ilya wss connected" << std::endl;
-        //asio::connect(get_lowest_layer(wss), results.begin(), results.end());
-        //asio::connect(sock, results.begin(), results.end());
-
-        wss.next_layer().handshake(asio::ssl::stream_base::client);
-        wss.set_option(websocket::stream_base::decorator(
-            [](websocket::request_type& req) {
-                std::cout << "Ilya handshake" << std::endl;
-                req.set(beast::http::field::user_agent, "0.0.1 binance-avg");
-                std::cout << "Ilya handshake done" << std::endl;
-            }
-        ));
-        wss.handshake(HOST.data(), "/ws/btcusdt@depth");
-        std::cout << "Ilya create buffer" << std::endl;
-        beast::flat_buffer buffer;
-        std::cout << "Ilya read" << std::endl;
-        wss.read(buffer);
-        std::cout << beast::make_printable(buffer.data()) << std::endl;
+        pull.join();
     }
     catch (const std::exception& e)
     {
         std::cerr << "Error: " << e.what() << std::endl;
     }
+    std::cout << "Successful done" << std::endl;
     return 0;
 }
