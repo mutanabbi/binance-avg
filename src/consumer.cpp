@@ -9,16 +9,23 @@
 #include <thread>
 #include <iostream>
 
-Consumer::Consumer(boost::asio::io_context& ioc, std::string symbol)
+Consumer::Consumer(
+    boost::asio::io_context& ioc
+  , std::string symbol
+  , decltype(on_next) on_next_handler
+)
   : path{"/ws/" + std::move(symbol) + "@depth"}
   , ctx{boost::asio::ssl::context::tlsv12}
   , wss{boost::asio::make_strand(ioc), ctx}
+  , on_next{std::move(on_next_handler)}
 {
     std::cout << "Ilya wss created" << std::endl;
 }
 
 void Consumer::connect(const boost::asio::ip::tcp::endpoint& ep)
 {
+    endpoint = ep;
+    /// @todo Ilya: check if already connected
     namespace websocket = boost::beast::websocket;
     get_lowest_layer(wss).connect(ep);
     std::cout << "Ilya wss connected" << std::endl;
@@ -37,19 +44,21 @@ void Consumer::async_read()
 {
     /// @todo Ilya shared_ptr
     wss.async_read(buffer, [this](const boost::system::error_code& ec, std::size_t bytes) {
-        std::cout << "[" << std::this_thread::get_id() << "]"
-            << "Read handler: transfered " << bytes
-            << " buffer size: " << buffer.size()
-            << std::endl;
+        //std::cout << "[" << std::this_thread::get_id() << "]"
+        //    << "Read handler: transfered " << bytes
+        //    << " buffer size: " << buffer.size()
+        //    << std::endl;
         if (ec)
         {
+            /// @todo Ilya: cleanup
             std::cout << "Error: " << ec << ": " << ec.message() << std::endl;
             return;
         }
 
         if (bytes)
         {
-            std::cout << std::chrono::steady_clock::now().time_since_epoch().count() << std::endl;
+            /// @todo Ilya pass this further
+            //std::cout << std::chrono::steady_clock::now().time_since_epoch().count() << std::endl;
             //std::cout << boost::beast::make_printable(buffer.data()) << "\n" << std::endl;
 
             /// @todo Ilya move to separate class
@@ -57,7 +66,8 @@ void Consumer::async_read()
             {
                 for (std::istream is{&buffer}; is && buffer.in_avail();)
                 {
-                    std::cout << "Available: " << buffer.in_avail() << std::endl;
+                    /// @todo Ilya: cleanup
+                    //std::cout << "Available: " << buffer.in_avail() << std::endl;
                     boost::property_tree::ptree json;
                     const auto before = buffer.in_avail();
                     boost::property_tree::read_json(is, json);
@@ -66,8 +76,7 @@ void Consumer::async_read()
                     // This is valid (not partial) json. Mark a chunk as processed
                     buffer.consume(before - after);
 
-                    depth_update update{json};
-                    std::cout << update << std::endl;
+                    on_next(endpoint.address().to_string(), model::DepthUpdate{json});
                 }
             }
             catch (const boost::property_tree::json_parser::json_parser_error& e)

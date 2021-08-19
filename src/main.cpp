@@ -1,49 +1,27 @@
 #include "consumer.hpp"
+#include "collector.hpp"
+#include "utils/interval_timer.hpp"
+#include "utils/thread_pull.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <iostream>
-#include <thread>
 #include <memory>
 #include <cassert>
 #include <csignal>
 
-template <typename F>
-class thread_pull
-{
-public:
-    explicit thread_pull(F f, std::size_t count = std::thread::hardware_concurrency())
-    {
-        pull.reserve(count);
-        std::generate_n(std::back_inserter(pull), count, std::move(f));
-    }
-    void join() noexcept
-    {
-        for (auto& t : pull) t.join();
-        pull.clear();
-    }
-    ~thread_pull() noexcept
-    {
-        join();
-    }
-
-private:
-    std::vector<std::thread> pull;
-};
 
 int main(int /*argc*/, const char */*argv*/[])
 {
-    namespace asio = boost::asio;
-    //namespace beast = boost::beast;
-    //namespace websocket = beast::websocket;
-
+    /// @todo Deal w/ cli args
     static auto HOST = std::string_view{"stream.binance.com"};
     static auto PORT = std::string_view{"9443"};
 
     try
     {
-        asio::io_context ioc;
+        boost::asio::io_context ioc;
 
+        // deal w/ signals
         boost::asio::signal_set signals{ioc};
         signals.add(SIGINT);
         signals.add(SIGTERM);
@@ -54,30 +32,56 @@ int main(int /*argc*/, const char */*argv*/[])
             ioc.stop();
         });
 
-        thread_pull pull{[&ioc] {
+        // init a reactor
+        utils::ThreadPull pull{[&ioc] {
             return std::thread([&ioc] { ioc.run(); });
         }};
 
-        asio::ip::tcp::resolver resolver{ioc};
+        // start a resolver
+        boost::asio::ip::tcp::resolver resolver{ioc};
         auto const results = resolver.resolve(HOST, PORT);
 
+        // init a collector
+        Collector collector{ioc};
+
+        // start the consumers
         std::vector<std::shared_ptr<Consumer>> consumers;
         consumers.reserve(results.size());
         for (const auto& rslt: results)
         {
             std::cout << rslt.endpoint() << std::endl;
-            consumers.emplace_back(std::make_shared<Consumer>(ioc, "btcusdt"));
+            consumers.emplace_back(std::make_shared<Consumer>(
+                /// @todo Ilya: put a real arg
+                ioc, "btcusdt", [&](std::string endpoint, model::DepthUpdate&& upd) {
+                    // connect the consumer to the collector
+                    collector.add(std::move(endpoint), std::move(upd));
+                }
+            ));
             consumers.back()->connect(rslt);
-            break; /// @todo ILYA get rid of this
+            //break; /// @todo Ilya: get rid of this
         }
         for (auto& c: consumers)
             c->run();
 
+        // output every N secs
+        static const utils::timeout_seconds OUTPUT_TIMEOUT{3};
+        utils::IntervalTimer timer{
+            ioc
+          , [&collector]{
+              /// @todo Ilya: move collector, strand and timer to a separate class
+              collector.async_print();
+          }
+          , OUTPUT_TIMEOUT
+        };
+        timer.run();
+
+        // wait until a user stop the app by sigint
         pull.join();
     }
     catch (const std::exception& e)
     {
         std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
     }
     std::cout << "Successful done" << std::endl;
     return 0;

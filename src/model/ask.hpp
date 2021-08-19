@@ -2,7 +2,8 @@
 
 #include "order.hpp"
 
-struct Ask : Order {
+struct Ask : Order
+{
     explicit Ask(const boost::property_tree::ptree& pt)
       : Order(pt)
     {}
