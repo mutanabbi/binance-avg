@@ -21,6 +21,7 @@ public:
         std::size_t from;
         std::size_t till;
         std::size_t last_snd_time;
+        std::chrono::steady_clock::time_point last_rcv_time;
         std::chrono::steady_clock::duration min_latency;
         std::chrono::steady_clock::duration max_latency;
         AverageMonoid<std::chrono::steady_clock::duration> avg_latency;
