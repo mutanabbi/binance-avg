@@ -2,13 +2,12 @@
 
 #include "order.hpp"
 
+namespace model {
+
 struct Bid : Order
 {
-    explicit Bid(const boost::property_tree::ptree& pt)
-        : Order(pt)
-    {}
-    friend std::ostream& operator<<(std::ostream& os, const Bid& v)
-    {
-      return os << "B=" << static_cast<const Order&>(v);
-    }
+    using Order::Order;
+    friend std::ostream& operator<<(std::ostream&, const Bid&);
 };
+
+} // namespace model

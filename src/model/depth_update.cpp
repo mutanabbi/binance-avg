@@ -1,5 +1,6 @@
 #include "depth_update.hpp"
 #include <boost/algorithm/string.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 namespace model {
 
