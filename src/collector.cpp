@@ -61,11 +61,11 @@ void Collector::add(
       , [endpoint = std::move(endpoint), upd = std::move(upd), rcv_time, this] {
             auto& endpoints = idx.get<endpoint_idx>();
             using latency_type = decltype(Stats::min_latency);
+
             auto [it, ok] = endpoints.emplace(
                 endpoint
               , upd.from
               , upd.till
-              , upd.timestamp
               , rcv_time
               , latency_type::max() // initial min latency
               , latency_type::min() // initial max latency
@@ -77,30 +77,9 @@ void Collector::add(
                     s.from = upd.from;
                     s.till = upd.till;
 
-                    const auto latency = [&s, &upd, rcv_time] {
-                        assert(upd.timestamp >= s.last_snd_time);
-                        const double latency_ratio =  static_cast<double>(upd.timestamp) / s.last_snd_time;
-                        assert(latency_ratio >= 1.);
-                        /// @todo Ilya
-                        //std::cout << "latency_ratio: " << latency_ratio << std::endl;
-                        //std::cout << "prev: " << s.last_snd_time << std::endl;
-                        //std::cout << "cur: " << upd.timestamp << std::endl;
-                        /// @todo Ilya: loss of precision here. Does it matter?
-                        const auto expected_rcv_time = decltype(rcv_time){
-                            decltype(rcv_time)::duration{
-                                static_cast<decltype(rcv_time)::rep>(
-                                    s.last_rcv_time.time_since_epoch().count() * latency_ratio
-                                )
-                            }
-                        };
-                        //std::cout << "exp: " << expected_rcv_time.time_since_epoch().count() << std::endl;
-                        //std::cout << "got: " << rcv_time.time_since_epoch().count() << std::endl;
-                        //std::cout << std::endl;
-                        assert(rcv_time >= expected_rcv_time);
-                        return rcv_time - expected_rcv_time; 
-                    }();
+                    assert(rcv_time > s.last_rcv_time);
+                    const auto latency = rcv_time - s.last_rcv_time;
 
-                    s.last_snd_time = upd.timestamp;
                     s.last_rcv_time = rcv_time;
                     s.min_latency = std::min(s.min_latency, latency);
                     s.max_latency = std::max(s.max_latency, latency);
