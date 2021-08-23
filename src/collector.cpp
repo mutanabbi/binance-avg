@@ -13,10 +13,10 @@ static auto to_us(const std::chrono::duration<Rep, Ratio>& dur)
     return std::chrono::duration_cast<std::chrono::microseconds>(dur);
 }
 
-static auto to_us(const AverageMonoid& avg)
+template <typename T>
+static auto to_us(const AverageMonoid<T>& avg)
 {
-    using duration = decltype(Collector::Stats::min_latency);
-    return to_us(duration{static_cast<duration::rep>(avg.value())});
+    return to_us(avg.value());
 }
 
 constexpr unsigned FLD1 = 20;
@@ -27,7 +27,8 @@ constexpr unsigned FLD5 = 8;
 constexpr unsigned FLD6 = 13;
 constexpr unsigned FLD7 = 13;
 
-static std::ostream& operator<<(std::ostream& os, const AverageMonoid& avg)
+template <typename T>
+static std::ostream& operator<<(std::ostream& os, const AverageMonoid<T>& avg)
 {
     std::stringstream ss;
     ss << " (" << avg.quantity() << ')';
@@ -50,40 +51,53 @@ std::ostream& operator<<(std::ostream& os, const Collector::Stats& stat)
 }
 
 void Collector::add(
-    std::chrono::steady_clock::time_point timestamp
+    std::chrono::steady_clock::time_point rcv_time
   , boost::asio::ip::tcp::endpoint endpoint
   , model::DepthUpdate&& upd
 )
 {
     boost::asio::post(
         strand
-      , [endpoint = std::move(endpoint), upd = std::move(upd), timestamp, this] {
-            /// @todo Ilya: This is just a stub. Calculate real avg
-            // upd.timestamp
+      , [endpoint = std::move(endpoint), upd = std::move(upd), rcv_time, this] {
             auto& endpoints = idx.get<endpoint_idx>();
             using latency_type = decltype(Stats::min_latency);
             auto [it, ok] = endpoints.emplace(
                 endpoint
               , upd.from
               , upd.till
-              , timestamp
+              , upd.timestamp
               , latency_type::max() // initial min latency
               , latency_type::min() // initial max latency
-              , AverageMonoid::mempty() // initial average
+              , decltype(Stats::avg_latency)::mempty() // initial average
             );
             if (!ok)
-                endpoints.modify(it, [&upd, timestamp](Stats& s) {
-                    assert(timestamp >= s.last_time && "Steady clock timepoint is non decreasing");
+                endpoints.modify(it, [&upd, rcv_time](Stats& s) {
                     assert(upd.from > s.till && "We expect non decreasing event id range feed");
                     s.from = upd.from;
                     s.till = upd.till;
-                    const auto latency = timestamp - s.last_time;
-                    s.last_time = timestamp;
+
+                    const auto latency = [&s, &upd, rcv_time] {
+                        assert(upd.timestamp >= s.last_snd_time);
+                        const double latency_ratio =  static_cast<double>(upd.timestamp) / s.last_snd_time;
+                        assert(latency_ratio >= 1.);
+                        /// @todo Ilya: loss of precision here. Does it matter?
+                        const auto expected_rcv_time = decltype(rcv_time){
+                            decltype(rcv_time)::duration{
+                                static_cast<decltype(rcv_time)::rep>(
+                                    rcv_time.time_since_epoch().count() / latency_ratio
+                                )
+                            }
+                        };
+                        assert(rcv_time >= expected_rcv_time);
+                        return rcv_time - expected_rcv_time; 
+                    }();
+
+                    s.last_snd_time = s.last_snd_time;
                     s.min_latency = std::min(s.min_latency, latency);
                     s.max_latency = std::max(s.max_latency, latency);
                     s.avg_latency = mappend(
                         s.avg_latency
-                      , AverageMonoid{static_cast<double>(latency.count())}
+                      , AverageMonoid{latency}
                     );
                     assert(to_us(s.avg_latency) >= to_us(s.min_latency));
                     assert(to_us(s.avg_latency) <= to_us(s.max_latency));

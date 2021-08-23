@@ -20,10 +20,10 @@ public:
         boost::asio::ip::tcp::endpoint endpoint;
         std::size_t from;
         std::size_t till;
-        std::chrono::steady_clock::time_point last_time;
+        std::size_t last_snd_time;
         std::chrono::steady_clock::duration min_latency;
         std::chrono::steady_clock::duration max_latency;
-        AverageMonoid avg_latency;
+        AverageMonoid<std::chrono::steady_clock::duration> avg_latency;
 
         friend std::ostream& operator<<(std::ostream&, const Stats&);
     };
@@ -42,7 +42,8 @@ private:
     };
     struct AverageComparation
     {
-        bool operator()(const AverageMonoid& lhv, const AverageMonoid& rhv) const {
+        template <typename T>
+        bool operator()(const AverageMonoid<T>& lhv, const AverageMonoid<T>& rhv) const {
             return lhv.value() < rhv.value();
         }
     };

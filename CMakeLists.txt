@@ -29,4 +29,8 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
+find_package(GTest)
+include(CTest)
+enable_testing()
+
 add_subdirectory(src)

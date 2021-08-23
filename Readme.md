@@ -6,6 +6,7 @@
 
 apt-get install ssl-dev
 apt-get install libboost-dev
+apt-get install libgtest-dev
 mkdir build
 cd build
 cmake ..

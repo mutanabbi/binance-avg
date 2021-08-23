@@ -1,6 +1,5 @@
 set(NAME ${CMAKE_PROJECT_NAME})
 add_executable(${NAME}
-    average_monoid.cpp
     collector.cpp
     consumer.cpp
     model/depth_update.cpp
@@ -11,3 +10,15 @@ target_link_libraries(${NAME}
     ${OPENSSL_LIBRARIES}
     Threads::Threads
 )
+
+add_executable(
+    unit-tests
+    tests/average_monoid_test.cpp
+)
+target_link_libraries(
+    unit-tests
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+)
+gtest_discover_tests(unit-tests)
