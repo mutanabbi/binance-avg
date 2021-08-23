@@ -51,10 +51,9 @@ int main(int /*argc*/, const char */*argv*/[])
         {
             std::cout << rslt.endpoint() << std::endl;
             consumers.emplace_back(std::make_shared<Consumer>(
-                /// @todo Ilya: put a real arg
-                ioc, "btcusdt", [&](std::string endpoint, model::DepthUpdate&& upd) {
+                ioc, "btcusdt", [&](auto ...args) {
                     // connect the consumer to the collector
-                    collector.add(std::move(endpoint), std::move(upd));
+                    collector.add(std::forward<decltype(args)>(args)...);
                 }
             ));
             consumers.back()->connect(rslt);

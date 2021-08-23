@@ -48,6 +48,7 @@ void Consumer::async_read()
         //    << "Read handler: transfered " << bytes
         //    << " buffer size: " << buffer.size()
         //    << std::endl;
+        auto timestamp = std::chrono::steady_clock::now();
         if (ec)
         {
             /// @todo Ilya: cleanup
@@ -76,7 +77,8 @@ void Consumer::async_read()
                     // This is valid (not partial) json. Mark a chunk as processed
                     buffer.consume(before - after);
 
-                    on_next(endpoint.address().to_string(), model::DepthUpdate{json});
+                    /// @todo Ilya: it's possible to avoid context change passing a whole bunch of models from current buffer
+                    on_next(timestamp, endpoint, model::DepthUpdate{json});
                 }
             }
             catch (const boost::property_tree::json_parser::json_parser_error& e)
