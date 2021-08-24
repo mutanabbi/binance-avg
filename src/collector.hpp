@@ -34,7 +34,7 @@ private:
         std::hash<std::string> hash;
 
         bool operator()(const boost::asio::ip::tcp::endpoint& ep) const {
-            /** @todo We can be smarter and check is_v4/v6 and hash a binary representation only
+            /** @todo We could be smarter and check is_v4/v6 and hash a binary representation only
              *  for ultimative perfomance. But string is OK for now
              */
             return hash(ep.address().to_string());

@@ -20,7 +20,8 @@ void Book::normalize()
     )
     {
         auto quantity = std::min(bids.cbegin()->quantity, asks.cbegin()->quantity);
-        on_match(*bids.cbegin(), *asks.cbegin());
+        if (on_match)
+            on_match(*bids.cbegin(), *asks.cbegin());
 
         split(bids, quantity);
         split(asks, quantity);
@@ -53,4 +54,16 @@ std::weak_ordering operator<=>(const Book::Bid& lhv, const Book::Bid& rhv)
 
     assert(!"Invalid NaN price value");
     throw std::runtime_error("Invalid price value");
+}
+
+Book::Ask operator+(const Book::Ask& lhv, const Book::Ask& rhv)
+{
+    assert(lhv.level == rhv.level);
+    return Book::Ask{std::min(lhv.timestamp, rhv.timestamp), lhv.level, lhv.quantity + rhv.quantity};
+}
+
+Book::Bid operator+(const Book::Bid& lhv, const Book::Bid& rhv)
+{
+    assert(lhv.level == rhv.level);
+    return Book::Bid{std::min(lhv.timestamp, rhv.timestamp), lhv.level, lhv.quantity + rhv.quantity};
 }
