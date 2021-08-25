@@ -11,12 +11,21 @@
 #include <csignal>
 
 
-int main(int /*argc*/, const char */*argv*/[])
+int main(int argc, const char* argv[])
 {
-    /// @todo Deal w/ cli args
+    /// @todo Deal w/ cli args using boost::program_options
     static auto HOST = std::string_view{"stream.binance.com"};
     static auto PORT = std::string_view{"9443"};
-    static std::string SYMBOL = "btcusdt";
+    static std::string DFLT_SYMBOL = "btcusdt";
+
+    // Primitive way to get minimal CLI args
+    if (argc > 2)
+    {
+        std::cout << "Usage:\n\t" << argv[0] << " [{SYMBOL:" << DFLT_SYMBOL << "}]" << std::endl;
+        return 1;
+    }
+
+    std::string SYMBOL = 2 == argc ? argv[1] : DFLT_SYMBOL;
 
     std::ios_base::sync_with_stdio(false);
 

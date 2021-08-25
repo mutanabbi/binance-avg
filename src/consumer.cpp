@@ -33,7 +33,11 @@ void Consumer::connect(const boost::asio::ip::tcp::endpoint& ep)
             req.set(boost::beast::http::field::user_agent, "0.0.1 binance-avg");
         }
     ));
-    wss.handshake(ep.address().to_string(), path);
+    boost::system::error_code ec;
+    wss.handshake(ep.address().to_string(), path, ec);
+    if (ec)
+        throw std::runtime_error{ec.message()};
+    assert(wss.is_open());
 }
 
 void Consumer::async_read()
