@@ -1,6 +1,6 @@
 #include "collector.hpp"
 #include <boost/asio/post.hpp>
-/// @todo Ilya: Debug only
+#include <ranges>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -39,14 +39,15 @@ static std::ostream& operator<<(std::ostream& os, const AverageMonoid<T>& avg)
 
 std::ostream& operator<<(std::ostream& os, const Collector::Stats& stat)
 {
+    using namespace std;
     return os
-        << std::left
-        << std::setw(FLD1) << stat.endpoint.address().to_string()
+        << left
+        << setw(FLD1) << stat.endpoint.address().to_string()
         << stat.avg_latency
-        << std::setw(FLD4) << to_us(stat.min_latency).count()
-        << std::setw(FLD5) << to_us(stat.max_latency).count()
-        << std::setw(FLD6) << stat.from
-        << std::setw(FLD7) << stat.till
+        << setw(FLD4) << to_us(stat.min_latency).count()
+        << setw(FLD5) << to_us(stat.max_latency).count()
+        << setw(FLD6) << stat.from
+        << setw(FLD7) << stat.till
         ;
 }
 
@@ -72,6 +73,7 @@ void Collector::add(
               , decltype(Stats::avg_latency)::mempty() // initial average
             );
             if (!ok)
+            {
                 endpoints.modify(it, [&upd, rcv_time](Stats& s) {
                     assert(upd.from > s.till && "We expect non decreasing event id range feed");
                     s.from = upd.from;
@@ -90,6 +92,18 @@ void Collector::add(
                     assert(to_us(s.avg_latency) >= to_us(s.min_latency));
                     assert(to_us(s.avg_latency) <= to_us(s.max_latency));
                 });
+            }
+
+            std::chrono::system_clock::time_point snd_time{
+                std::chrono::milliseconds{upd.timestamp}
+            };
+            using std::views::filter;
+            static const auto has_quantity = [](const model::Order& o) { return 0 != o.quantity; };
+            for (auto&& order : upd.bids | filter(has_quantity))
+                book.add(Book::Bid{snd_time, std::forward<decltype(order)>(order)});
+
+            for (auto&& order : upd.asks | filter(has_quantity))
+                book.add(Book::Ask{snd_time, std::forward<decltype(order)>(order)});
         }
     );
 }
@@ -99,18 +113,28 @@ void Collector::async_print() const
     boost::asio::post(
         strand
       , [this] {
-            std::cout
-              << std::left
-              << std::setw(FLD1) << "endpoint"
-              << std::setw(FLD2) << "avg us"
-              << std::setw(FLD3) << "(qnt)"
-              << std::setw(FLD4) << "min us"
-              << std::setw(FLD5) << "max us"
-              << std::setw(FLD6 + FLD7) << "lst events rng"
+            /// @todo It could be a CLI parameter
+            constexpr std::size_t PAGE_SZ = 10;
+            using namespace std;
+            cout
+              << left
+              << setw(FLD1) << "endpoint"
+              << setw(FLD2) << "avg us"
+              << setw(FLD3) << "(qnt)"
+              << setw(FLD4) << "min us"
+              << setw(FLD5) << "max us"
+              << setw(FLD6 + FLD7) << "lst events rng"
               << '\n';
             for (const auto& stat : stats())
-                std::cout << stat << '\n';
-            std::cout << std::endl;
+                cout << stat << '\n';
+            cout << "\nBids:\n";
+            using std::views::take;
+            for (const auto& record : book.bids_by_level() | views::take(PAGE_SZ))
+                cout << record << '\n';
+            cout << "\nAsks:\n";
+            for (const auto& record : book.asks_by_level() | views::take(PAGE_SZ))
+                cout << record << '\n';
+            cout << endl;
       }
     );
 }

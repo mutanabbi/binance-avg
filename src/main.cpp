@@ -16,6 +16,9 @@ int main(int /*argc*/, const char */*argv*/[])
     /// @todo Deal w/ cli args
     static auto HOST = std::string_view{"stream.binance.com"};
     static auto PORT = std::string_view{"9443"};
+    static std::string SYMBOL = "btcusdt";
+
+    std::ios_base::sync_with_stdio(false);
 
     try
     {
@@ -27,8 +30,8 @@ int main(int /*argc*/, const char */*argv*/[])
         signals.add(SIGTERM);
         signals.add(SIGQUIT);
         signals.async_wait([&ioc](boost::system::error_code ec, int signal) {
-            std::cout << "Sygnal detected: " << signal << std::endl;
-            std::cout << ec << ": " << ec.message() << std::endl;
+            std::cout << "Signal detected: " << signal << '\n'
+              << ec << ": " << ec.message() << std::endl;
             ioc.stop();
         });
 
@@ -49,15 +52,14 @@ int main(int /*argc*/, const char */*argv*/[])
         consumers.reserve(results.size());
         for (const auto& rslt: results)
         {
-            std::cout << rslt.endpoint() << std::endl;
+            std::cout << "Connecting to: " << rslt.endpoint() << std::endl;
             consumers.emplace_back(std::make_shared<Consumer>(
-                ioc, "btcusdt", [&](auto ...args) {
+                ioc, SYMBOL, [&](auto ...args) {
                     // connect the consumer to the collector
                     collector.add(std::forward<decltype(args)>(args)...);
                 }
             ));
             consumers.back()->connect(rslt);
-            //break; /// @todo Ilya: get rid of this
         }
         for (auto& c: consumers)
             c->run();
@@ -67,7 +69,6 @@ int main(int /*argc*/, const char */*argv*/[])
         utils::IntervalTimer timer{
             ioc
           , [&collector]{
-              /// @todo Ilya: move collector, strand and timer to a separate class
               collector.async_print();
           }
           , OUTPUT_TIMEOUT
@@ -82,6 +83,5 @@ int main(int /*argc*/, const char */*argv*/[])
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
-    std::cout << "Successful done" << std::endl;
     return 0;
 }

@@ -17,13 +17,13 @@ TEST_F(BookTest, Matching)
     rslt.emplace_back(bid, ask);
   });
 
-  using std::chrono::steady_clock;
+  using std::chrono::system_clock;
 
   EXPECT_TRUE(empty(book.bids_by_level()));
   EXPECT_TRUE(empty(book.asks_by_level()));
 
-  book.add(Book::Bid{steady_clock::now(), 10.0, 20.});
-  book.add(Book::Bid{steady_clock::now(), 12.0, 20.});
+  book.add(Book::Bid{system_clock::now(), 10.0, 20.});
+  book.add(Book::Bid{system_clock::now(), 12.0, 20.});
 
   {
     auto bids = book.bids_by_level();
@@ -42,7 +42,7 @@ TEST_F(BookTest, Matching)
     EXPECT_EQ(++it, end(bids));
   }
 
-  book.add(Book::Ask{steady_clock::now(), 20.0, 20.});
+  book.add(Book::Ask{system_clock::now(), 20.0, 20.});
 
   {
     auto bids = book.bids_by_level();
@@ -66,7 +66,7 @@ TEST_F(BookTest, Matching)
     }
   }
 
-  book.add(Book::Ask{steady_clock::now(), 5.0, 30.});
+  book.add(Book::Ask{system_clock::now(), 5.0, 30.});
 
   {
     auto bids = book.bids_by_level();

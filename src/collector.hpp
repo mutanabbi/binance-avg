@@ -1,5 +1,6 @@
 #pragma once
 
+#include "book.hpp"
 #include "average_monoid.hpp"
 #include "model/depth_update.hpp"
 #include <boost/asio/strand.hpp>
@@ -10,8 +11,6 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 
-
-/// @todo Ilya: StatsCollector :)
 class Collector
 {
 public:
@@ -34,8 +33,9 @@ private:
         std::hash<std::string> hash;
 
         bool operator()(const boost::asio::ip::tcp::endpoint& ep) const {
-            /** @todo We could be smarter and check is_v4/v6 and hash a binary representation only
-             *  for ultimative perfomance. But string is OK for now
+            /** @todo We could be smarter and check is_v4/v6 and hash a binary
+             *  representation only for ultimative perfomance.
+             *  But string is OK for now
              */
             return hash(ep.address().to_string());
         }
@@ -52,8 +52,7 @@ private:
     struct latency_idx {};
     struct endpoint_idx {};
 
-    // This is just a way to declare idx member w/t repeated verbose
-    // boost::multi_index blah-blah
+    // Use IIFE to declare index type w/t repeated verbose boost::multi_index blah-blah
     using multi_index_type = decltype([]{
        using namespace boost::multi_index;
        return multi_index_container<
@@ -75,6 +74,7 @@ private:
 
     boost::asio::io_context::strand strand;
     multi_index_type idx;
+    Book book;
 
 public:
     explicit Collector(boost::asio::io_context& context) : strand(context)

@@ -8,6 +8,7 @@ add_executable(${NAME}
     model/bid.cpp
     model/depth_update.cpp
     model/order.cpp
+    utils/interval_timer.cpp
 )
 target_link_libraries(${NAME}
     ${BOOST_ASIO_LIBRARY}
@@ -31,4 +32,5 @@ target_link_libraries(
         GTest::GTest
         GTest::Main
 )
+
 gtest_discover_tests(unit-tests)

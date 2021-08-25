@@ -11,6 +11,7 @@
 #include <chrono>
 #include <string>
 #include <functional>
+#include <optional>
 
 class Consumer
 {
@@ -18,13 +19,13 @@ class Consumer
     boost::asio::ssl::context ctx;
     boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>> wss;
     boost::asio::streambuf buffer;
-    boost::asio::ip::tcp::endpoint endpoint;
+    std::optional<boost::asio::ip::tcp::endpoint> endpoint;
 
 public:
     /// @todo Preffer to use boost::signals2, but 1.71 doesn't support c++20
     using signal_type = std::function<void (
         std::chrono::steady_clock::time_point
-      , decltype(endpoint)
+      , decltype(endpoint)::value_type
       , model::DepthUpdate&&
       )>;
 

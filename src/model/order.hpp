@@ -18,5 +18,4 @@ struct Order
     friend std::ostream& operator<<(std::ostream&, const Order&);
 };
 
-
 } // namespace model

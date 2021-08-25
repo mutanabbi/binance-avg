@@ -13,7 +13,6 @@ struct DepthUpdate
 
     friend std::ostream& operator<<(std::ostream&, const DepthUpdate&);
 
-    /// @todo Ilya: does it make any sense to use @c std::chrono here?
     std::size_t timestamp = 0;                              // Event time
     std::string symbol;
     std::size_t from = 0;                                   // First update ID in event

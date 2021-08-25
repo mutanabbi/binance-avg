@@ -1,6 +1,7 @@
 #include "depth_update.hpp"
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <stdexcept>
 
 namespace model {
 
@@ -22,7 +23,7 @@ DepthUpdate::DepthUpdate(const boost::property_tree::ptree& pt)
     fill_with(asks, pt.get_child("a"));
 }
 
-inline std::ostream& operator<<(std::ostream& os, const DepthUpdate& v)
+std::ostream& operator<<(std::ostream& os, const DepthUpdate& v)
 {
     auto print_rng = [](std::ostream& os, const auto& rng, std::string sprtr = ", ") {
         std::string cur_sprtr;

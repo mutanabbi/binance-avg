@@ -8,10 +8,7 @@ class AverageMonoid
     T val = {};
     std::size_t qnt = 0;
 
-    bool is_mempty() const
-    {
-        return 0 == qnt;
-    }
+    bool is_mempty() const { return 0 == qnt; }
 
     AverageMonoid() = default;
 
