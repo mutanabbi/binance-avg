@@ -1,4 +1,4 @@
-#Specification#
+# Specification
 Приложение под Linux (Ubuntu 18-20) для поиска самого быстрого websocket подключения к маркетдате на [binance.com](https://binance-docs.github.io/apidocs/spot/en/#websocket-market-streams).
 
 Нужно найти самый быстрый IP адрес для хоста `stream.binance.com`, по потоку `@depth`, через который маркетдата приходит быстрее.
@@ -8,7 +8,7 @@
 
 Достаточно подписаться на один символ, который передаётся параметром.
 
-#How to build#
+# How to build
 ```bash
   apt-get install ssl-dev
   apt-get install libboost-dev
@@ -19,7 +19,7 @@
   make -j
 ```
 
-#Stream object format#
+# Stream object format
 ```json
 {
   "e": "depthUpdate", // Event type
@@ -42,7 +42,7 @@
 }
 ```
 
-##Constraints##
+## Constraints
 - All symbols for streams are lowercase
 - A single connection to stream.binance.com is only valid for 24 hours; expect to be disconnected at the 24 hour mark
 - The websocket server will send a ping frame every 3 minutes. If the websocket server does not receive a pong frame back from the connection within a 10 minute period, the connection will be disconnected. Unsolicited pong frames are allowed
@@ -53,7 +53,7 @@
 - If the quantity is 0, remove the price level.
 - Receiving an event that removes a price level that is not in your local order book can happen and is normal.
 
-##Example##
+## Example
 ```
 {
   "e":"depthUpdate",
