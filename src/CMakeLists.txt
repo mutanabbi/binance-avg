@@ -1,5 +1,5 @@
-set(NAME ${CMAKE_PROJECT_NAME})
-add_executable(${NAME}
+add_executable(
+    ${PROJECT_NAME}
     book.cpp
     collector.cpp
     consumer.cpp
@@ -9,12 +9,14 @@ add_executable(${NAME}
     model/depth_update.cpp
     model/order.cpp
     utils/interval_timer.cpp
-)
-target_link_libraries(${NAME}
-    ${BOOST_ASIO_LIBRARY}
-    ${OPENSSL_LIBRARIES}
-    Threads::Threads
-)
+  )
+target_link_libraries(
+    ${PROJECT_NAME}
+    PUBLIC
+        Boost::headers
+        OpenSSL::SSL
+        Threads::Threads
+  )
 
 add_executable(
     unit-tests
@@ -25,12 +27,12 @@ add_executable(
     model/ask.cpp
     model/bid.cpp
     model/order.cpp
-)
+  )
 target_link_libraries(
     unit-tests
     PRIVATE
         GTest::GTest
         GTest::Main
-)
+  )
 
 gtest_discover_tests(unit-tests)

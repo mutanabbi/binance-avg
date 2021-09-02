@@ -1,22 +1,25 @@
 # Specification
-Приложение под Linux (Ubuntu 18-20) для поиска самого быстрого websocket подключения к маркетдате на [binance.com](https://binance-docs.github.io/apidocs/spot/en/#websocket-market-streams).
 
-Нужно найти самый быстрый IP адрес для хоста `stream.binance.com`, по потоку `@depth`, через который маркетдата приходит быстрее.
-Результат работы приложения нужно выводить в консоль с заданной периодичностью, как список IP адресов и минимальной/средней/максимальной задержек, отсортированный по средней задержке.
+Приложение под Linux (Ubuntu 18-20) для поиска самого быстрого websocket подключения к маркетдате
+на [binance.com](https://binance-docs.github.io/apidocs/spot/en/#websocket-market-streams).
 
-Как бонус можно сделать сборку стакана по потоку `@depth` на лету (без запроса снапшота). Стакан можно выводить вместе со статисикой.
+Нужно найти самый быстрый IP адрес для хоста `stream.binance.com`, по потоку `@depth`, через который
+маркетдата приходит быстрее. Результат работы приложения нужно выводить в консоль с заданной периодичностью,
+как список IP адресов и минимальной/средней/максимальной задержек, отсортированный по средней задержке.
+
+Как бонус можно сделать сборку стакана по потоку `@depth` на лету (без запроса снапшота). Стакан можно
+выводить вместе со статисикой.
 
 Достаточно подписаться на один символ, который передаётся параметром.
 
 # How to build
 ```bash
-  apt-get install ssl-dev
-  apt-get install libboost-dev
-  apt-get install libgtest-dev
-  mkdir build
+  apt-get install ssl-dev libboost-dev libgtest-dev
+  mkdir -p build
   cd build
   cmake ..
-  make -j
+  cmake --build . --parallel
+  GTEST_COLOR=1 ctest -V
 ```
 
 # Stream object format
@@ -44,8 +47,11 @@
 
 ## Constraints
 - All symbols for streams are lowercase
-- A single connection to stream.binance.com is only valid for 24 hours; expect to be disconnected at the 24 hour mark
-- The websocket server will send a ping frame every 3 minutes. If the websocket server does not receive a pong frame back from the connection within a 10 minute period, the connection will be disconnected. Unsolicited pong frames are allowed
+- A single connection to stream.binance.com is only valid for 24 hours; expect to be disconnected
+  at the 24 hour mark
+- The websocket server will send a ping frame every 3 minutes. If the websocket server does not
+  receive a pong frame back from the connection within a 10 minute period, the connection will be
+  disconnected. Unsolicited pong frames are allowed
 - The base endpoint is: `wss://stream.binance.com:9443`
 - Raw streams are accessed at `/ws/<streamName>`
 - While listening to the stream, each new event's U should be equal to the previous event's u+1
@@ -54,7 +60,7 @@
 - Receiving an event that removes a price level that is not in your local order book can happen and is normal.
 
 ## Example
-```
+```json
 {
   "e":"depthUpdate",
   "E":1629132299478,
@@ -75,4 +81,3 @@
   ]
 }
 ```
-
