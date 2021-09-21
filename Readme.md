@@ -14,7 +14,10 @@
 
 # How to build
 ```bash
-  apt-get install ssl-dev libboost-dev libgtest-dev
+  sudo apt-get -y install gcc-10 libssl-dev libboost-dev libboost-system-dev libgtest-dev && \
+  sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 50 && \
+  sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 50 && \
+  sudo update-alternatives --install /usr/bin/cpp cpp /usr/bin/cpp-10 50
   mkdir -p build
   cd build
   cmake ..
