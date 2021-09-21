@@ -21,6 +21,9 @@ jobs:
     steps:
     - name: Install dependencies
       run: sudo apt-get -y install gcc-10 libssl-dev libboost-dev libboost-system-dev libgtest-dev
+  
+    - name: Set GCC10 as default compiler (to support std::ranges)
+      run: sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 50
 
     - uses: actions/checkout@v2
 
