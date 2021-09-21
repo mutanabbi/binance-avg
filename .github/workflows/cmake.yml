@@ -24,6 +24,8 @@ jobs:
   
     - name: Set GCC10 as default compiler (to support std::ranges)
       run: sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 50
+           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 50
+           sudo update-alternatives --install /usr/bin/cpp cpp /usr/bin/cpp-10 50
 
     - uses: actions/checkout@v2
 
