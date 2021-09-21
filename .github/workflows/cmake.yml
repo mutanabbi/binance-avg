@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install dependencies
+      run: apt-get -y install ssl-dev libboost-dev libgtest-dev
+
     - uses: actions/checkout@v2
 
     - name: Configure CMake
